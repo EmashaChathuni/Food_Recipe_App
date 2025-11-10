@@ -1,0 +1,30 @@
+# Node.js
+node_modules/
+.env
+*.pem
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Logs
+logs
+*.log
+
+# Build outputs
+backend/build/
+frontend/build/
+coverage/
+dist/
+
+# Editor directories
+.vscode/
+.idea/
+.DS_Store
+
+# Docker artifacts
+*.pid

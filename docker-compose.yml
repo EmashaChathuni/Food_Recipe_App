@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/foodrecipeapp
+    depends_on:
+      - mongo
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # point the frontend to the backend service (not localhost)
+      - REACT_APP_BACKEND_URL=http://backend:5000/api
+      # ensure CRA dev server listens on 0.0.0.0 inside container
+      - HOST=0.0.0.0
+      # optional: enable polling for file watchers inside Docker
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+volumes:
+  mongo-data:

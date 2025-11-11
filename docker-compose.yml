@@ -1,31 +1,43 @@
 version: '3.8'
+
 services:
-  mongo:
-    image: mongo:6
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: island-table-backend
     ports:
       - "5000:5000"
     environment:
-      - MONGO_URI=mongodb://mongo:27017/foodrecipeapp
-    depends_on:
-      - mongo
+      - PORT=5000
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production}
+      - NODE_ENV=${NODE_ENV:-production}
+    volumes:
+      - backend-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/api/recipes"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: island-table-frontend
     ports:
-      - "3000:3000"
-    environment:
-      # point the frontend to the backend service (not localhost)
-      - REACT_APP_BACKEND_URL=http://backend:5000/api
-      # ensure CRA dev server listens on 0.0.0.0 inside container
-      - HOST=0.0.0.0
-      # optional: enable polling for file watchers inside Docker
-      - CHOKIDAR_USEPOLLING=true
+      - "80:80"
     depends_on:
       - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
-  mongo-data:
+  backend-data:
+    driver: local

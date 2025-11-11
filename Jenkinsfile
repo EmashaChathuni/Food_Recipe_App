@@ -34,22 +34,6 @@ pipeline {
             }
         }
 
-        stage('Install backend dependencies') {
-            steps {
-                dir('backend') {
-                    sh 'npm ci'
-                }
-            }
-        }
-
-        stage('Install frontend dependencies') {
-            steps {
-                dir('frontend') {
-                    sh 'npm ci'
-                }
-            }
-        }
-
         stage('Build backend Docker image') {
             steps {
                 sh """

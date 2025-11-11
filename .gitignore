@@ -21,6 +21,10 @@ frontend/build/
 coverage/
 dist/
 
+# SQLite Database (local development only)
+backend/recipes.db
+backend/*.db
+
 # Cloud/IaC artifacts
 aws/
 *.tfvars

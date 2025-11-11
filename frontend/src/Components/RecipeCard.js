@@ -5,7 +5,6 @@ import './RecipeCard.css';
 const RecipeCard = ({ recipe, onToggleFavorite, isFavorite }) => {
   const id = recipe._id || recipe.id;
   const image = recipe.image || 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg';
-  const title = recipe.title || recipe.name;
   const category = recipe.category || 'Seasonal';
   const prep = recipe.prepTime || '30 mins';
   const difficulty = recipe.difficulty || 'Intermediate';

@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Homepage from './pages/Homepage';
 import RecipeDetails from './pages/RecipeDetails';
-import CreateRecipe from './pages/CreateRecipe';
 import Favorites from './pages/Favorites';
 import Recipes from './pages/Recipes';
 import AddRecipe from './pages/AddRecipe';

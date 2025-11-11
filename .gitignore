@@ -1,6 +1,6 @@
-# Node.js
+# Node.js / environment files
 node_modules/
-.env
+*.env
 *.pem
 *.tfstate
 *.tfstate.*
@@ -20,6 +20,11 @@ backend/build/
 frontend/build/
 coverage/
 dist/
+
+# Cloud/IaC artifacts
+aws/
+*.tfvars
+awscliv2.zip
 
 # Editor directories
 .vscode/

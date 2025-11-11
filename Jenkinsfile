@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'DOCKERHUB_NAMESPACE', defaultValue: 'your-dockerhub-username', description: 'Docker Hub user or organisation to push images to')
-        string(name: 'BACKEND_IMAGE_NAME', defaultValue: 'food-recipe-backend', description: 'Docker image name for backend (without namespace)')
-        string(name: 'FRONTEND_IMAGE_NAME', defaultValue: 'food-recipe-frontend', description: 'Docker image name for frontend (without namespace)')
+        string(name: 'DOCKERHUB_NAMESPACE', defaultValue: 'emashachathuni', description: 'Docker Hub user or organisation to push images to')
+        string(name: 'BACKEND_IMAGE_NAME', defaultValue: 'island-table-backend', description: 'Docker image name for backend (without namespace)')
+        string(name: 'FRONTEND_IMAGE_NAME', defaultValue: 'island-table-frontend', description: 'Docker image name for frontend (without namespace)')
     }
 
     environment {
@@ -13,6 +13,7 @@ pipeline {
 
     options {
         timestamps()
+        // ansiColor removed - install AnsiColor plugin if you need colored output
     }
 
     stages {

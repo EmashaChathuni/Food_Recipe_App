@@ -32,6 +32,24 @@
 	width: 100%;
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow-card);
+	object-fit: cover;
+	aspect-ratio: 4 / 3;
+}
+
+.image-preview {
+	margin-top: 1rem;
+	border-radius: 12px;
+	overflow: hidden;
+	max-width: 400px;
+	border: 2px solid var(--color-border);
+}
+
+.image-preview img {
+	width: 100%;
+	height: auto;
+	max-height: 300px;
+	object-fit: cover;
+	display: block;
 }
 
 .form-wrapper {

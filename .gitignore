@@ -37,3 +37,19 @@ awscliv2.zip
 
 # Docker artifacts
 *.pid
+
+# Documentation files - exclude all MD files
+*.md
+README.md
+SETUP_COMPLETE.md
+JENKINS_SETUP.md
+JENKINS_STANDALONE_SETUP.md
+DOCKER_HUB_UPDATE.md
+DEPLOYMENT.md
+GIT_PUSH_GUIDE.md
+GITHUB_PUSH_SUCCESS.md
+CICD-DESIGN-DIAGRAM.md
+
+# Sensitive credential files
+add-docker-creds.groovy
+credentials.xml

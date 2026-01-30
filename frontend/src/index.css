@@ -55,6 +55,21 @@ a, button {
 img {
   max-width: 100%;
   display: block;
+  height: auto;
+}
+
+img[src=""], img:not([src]) {
+  opacity: 0;
+  background: #f0f0f0;
+}
+
+img[alt] {
+  font-style: italic;
+  color: #666;
+  background: #f5f5f5;
+  border: 1px dashed #ddd;
+  padding: 1rem;
+  text-align: center;
 }
 
 button {

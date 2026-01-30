@@ -24,7 +24,6 @@ const db = new sqlite3.Database('./recipes.db', (err) => {
 // Create tables if they don't exist
 function initDatabase() {
   db.serialize(() => {
-    // Recipes table
     db.run(`
       CREATE TABLE IF NOT EXISTS recipes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,11 +36,15 @@ function initDatabase() {
         description TEXT,
         ingredients TEXT,
         steps TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        tags TEXT,
+        servings INTEGER DEFAULT 4,
+        author_id INTEGER,
+        views INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (author_id) REFERENCES users(id)
       )
     `);
 
-    // Users table
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +55,6 @@ function initDatabase() {
       )
     `);
 
-    // Favorites table
     db.run(`
       CREATE TABLE IF NOT EXISTS favorites (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,6 +63,20 @@ function initDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (recipe_id) REFERENCES recipes(id),
+        UNIQUE(user_id, recipe_id)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipe_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+        comment TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
         UNIQUE(user_id, recipe_id)
       )
     `);
@@ -102,27 +118,54 @@ async function authMiddleware(req, res, next) {
 
 // Get all recipes (with optional category filter)
 app.get('/api/recipes', (req, res) => {
-  const { category } = req.query;
+  const { category, tag, search } = req.query;
   
-  let query = 'SELECT * FROM recipes';
+  let query = `
+    SELECT r.*, 
+           COALESCE(AVG(rv.rating), 0) as avgRating,
+           COUNT(DISTINCT rv.id) as reviewCount,
+           u.name as authorName
+    FROM recipes r
+    LEFT JOIN reviews rv ON r.id = rv.recipe_id
+    LEFT JOIN users u ON r.author_id = u.id
+  `;
+  let conditions = [];
   let params = [];
   
-  if (category) {
-    query += ' WHERE category = ?';
+  if (category && category !== 'All') {
+    conditions.push('r.category = ?');
     params.push(category);
   }
+  
+  if (tag) {
+    conditions.push('r.tags LIKE ?');
+    params.push(`%${tag}%`);
+  }
+  
+  if (search) {
+    conditions.push('(r.name LIKE ? OR r.description LIKE ? OR r.ingredients LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+  }
+  
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+  
+  query += ' GROUP BY r.id ORDER BY r.created_at DESC';
   
   db.all(query, params, (err, rows) => {
     if (err) {
       return res.status(500).json({ message: 'Database error', error: err.message });
     }
     
-    // Parse JSON fields
     const recipes = rows.map(row => ({
       ...row,
-      _id: row.id, // For frontend compatibility
+      _id: row.id,
       ingredients: row.ingredients ? JSON.parse(row.ingredients) : [],
-      steps: row.steps ? JSON.parse(row.steps) : []
+      steps: row.steps ? JSON.parse(row.steps) : [],
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      avgRating: Math.round(row.avgRating * 10) / 10,
+      reviewCount: row.reviewCount
     }));
     
     res.json(recipes);
@@ -131,7 +174,21 @@ app.get('/api/recipes', (req, res) => {
 
 // Get single recipe by ID
 app.get('/api/recipes/:id', (req, res) => {
-  db.get('SELECT * FROM recipes WHERE id = ?', [req.params.id], (err, row) => {
+  db.run('UPDATE recipes SET views = views + 1 WHERE id = ?', [req.params.id]);
+  
+  const query = `
+    SELECT r.*, 
+           COALESCE(AVG(rv.rating), 0) as avgRating,
+           COUNT(DISTINCT rv.id) as reviewCount,
+           u.name as authorName
+    FROM recipes r
+    LEFT JOIN reviews rv ON r.id = rv.recipe_id
+    LEFT JOIN users u ON r.author_id = u.id
+    WHERE r.id = ?
+    GROUP BY r.id
+  `;
+  
+  db.get(query, [req.params.id], (err, row) => {
     if (err) {
       return res.status(500).json({ message: 'Database error', error: err.message });
     }
@@ -143,20 +200,34 @@ app.get('/api/recipes/:id', (req, res) => {
       ...row,
       _id: row.id,
       ingredients: row.ingredients ? JSON.parse(row.ingredients) : [],
-      steps: row.steps ? JSON.parse(row.steps) : []
+      steps: row.steps ? JSON.parse(row.steps) : [],
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      avgRating: Math.round(row.avgRating * 10) / 10,
+      reviewCount: row.reviewCount
     };
     
-    res.json(recipe);
+    db.all(
+      `SELECT rv.*, u.name as userName 
+       FROM reviews rv 
+       JOIN users u ON rv.user_id = u.id 
+       WHERE rv.recipe_id = ? 
+       ORDER BY rv.created_at DESC`,
+      [req.params.id],
+      (err, reviews) => {
+        recipe.reviews = reviews || [];
+        res.json(recipe);
+      }
+    );
   });
 });
 
 // Create new recipe
 app.post('/api/recipes', (req, res) => {
-  const { name, title, category, prepTime, difficulty, image, description, ingredients, steps } = req.body;
+  const { name, title, category, prepTime, difficulty, image, description, ingredients, steps, tags, servings } = req.body;
   
   const query = `
-    INSERT INTO recipes (name, title, category, prepTime, difficulty, image, description, ingredients, steps)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO recipes (name, title, category, prepTime, difficulty, image, description, ingredients, steps, tags, servings)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   
   const params = [
@@ -168,7 +239,9 @@ app.post('/api/recipes', (req, res) => {
     image,
     description,
     JSON.stringify(ingredients || []),
-    JSON.stringify(steps || [])
+    JSON.stringify(steps || []),
+    JSON.stringify(tags || []),
+    servings || 4
   ];
   
   db.run(query, params, function(err) {
@@ -176,7 +249,6 @@ app.post('/api/recipes', (req, res) => {
       return res.status(500).json({ message: 'Failed to create recipe', error: err.message });
     }
     
-    // Return the created recipe
     db.get('SELECT * FROM recipes WHERE id = ?', [this.lastID], (err, row) => {
       if (err) {
         return res.status(500).json({ message: 'Recipe created but failed to retrieve', error: err.message });
@@ -186,11 +258,112 @@ app.post('/api/recipes', (req, res) => {
         ...row,
         _id: row.id,
         ingredients: row.ingredients ? JSON.parse(row.ingredients) : [],
-        steps: row.steps ? JSON.parse(row.steps) : []
+        steps: row.steps ? JSON.parse(row.steps) : [],
+        tags: row.tags ? JSON.parse(row.tags) : []
       };
       
       res.status(201).json(recipe);
     });
+  });
+});
+
+app.get('/api/recipes/trending/top', (req, res) => {
+  const limit = req.query.limit || 6;
+  const query = `
+    SELECT r.*, 
+           COALESCE(AVG(rv.rating), 0) as avgRating,
+           COUNT(DISTINCT rv.id) as reviewCount,
+           u.name as authorName
+    FROM recipes r
+    LEFT JOIN reviews rv ON r.id = rv.recipe_id
+    LEFT JOIN users u ON r.author_id = u.id
+    GROUP BY r.id
+    ORDER BY r.views DESC, avgRating DESC
+    LIMIT ?
+  `;
+  
+  db.all(query, [limit], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Database error' });
+    }
+    
+    const recipes = rows.map(row => ({
+      ...row,
+      _id: row.id,
+      ingredients: row.ingredients ? JSON.parse(row.ingredients) : [],
+      steps: row.steps ? JSON.parse(row.steps) : [],
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      avgRating: Math.round(row.avgRating * 10) / 10
+    }));
+    
+    res.json(recipes);
+  });
+});
+
+app.get('/api/recipes/random/one', (req, res) => {
+  db.get('SELECT * FROM recipes ORDER BY RANDOM() LIMIT 1', (err, row) => {
+    if (err || !row) {
+      return res.status(500).json({ message: 'Failed to get random recipe' });
+    }
+    
+    const recipe = {
+      ...row,
+      _id: row.id,
+      ingredients: row.ingredients ? JSON.parse(row.ingredients) : [],
+      steps: row.steps ? JSON.parse(row.steps) : [],
+      tags: row.tags ? JSON.parse(row.tags) : []
+    };
+    
+    res.json(recipe);
+  });
+});
+
+app.post('/api/recipes/:id/reviews', authMiddleware, (req, res) => {
+  const { rating, comment } = req.body;
+  const recipeId = req.params.id;
+  
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+  }
+  
+  db.run(
+    'INSERT OR REPLACE INTO reviews (recipe_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
+    [recipeId, req.user.id, rating, comment || ''],
+    (err) => {
+      if (err) {
+        return res.status(500).json({ message: 'Failed to submit review' });
+      }
+      
+      db.all(
+        `SELECT rv.*, u.name as userName 
+         FROM reviews rv 
+         JOIN users u ON rv.user_id = u.id 
+         WHERE rv.recipe_id = ? 
+         ORDER BY rv.created_at DESC`,
+        [recipeId],
+        (err, reviews) => {
+          res.json({ message: 'Review submitted', reviews: reviews || [] });
+        }
+      );
+    }
+  );
+});
+
+app.get('/api/tags', (req, res) => {
+  db.all('SELECT DISTINCT tags FROM recipes WHERE tags IS NOT NULL AND tags != "[]"', (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Database error' });
+    }
+    
+    const tagSet = new Set();
+    rows.forEach(row => {
+      try {
+        const tags = JSON.parse(row.tags);
+        tags.forEach(tag => tagSet.add(tag));
+      } catch (e) {}
+    });
+    
+    res.json(Array.from(tagSet));
   });
 });
 

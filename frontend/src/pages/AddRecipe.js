@@ -11,17 +11,24 @@ const initialForm = {
   image: '',
   ingredients: '',
   steps: '',
+  tags: '',
+  servings: '4',
 };
 
 const AddRecipe = () => {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    
+    if (name === 'image' && value) {
+      setImagePreview(value);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -34,9 +41,11 @@ const AddRecipe = () => {
       category: form.category,
       prepTime: form.prepTime,
       difficulty: form.difficulty,
-  image: form.image || 'https://images.unsplash.com/photo-1626082927389-6cd609f34ab1?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3',
+      image: form.image || 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg',
       ingredients: form.ingredients.split('\n').map((item) => item.trim()).filter(Boolean),
       steps: form.steps.split('\n').map((item) => item.trim()).filter(Boolean),
+      tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+      servings: parseInt(form.servings) || 4,
     };
 
     try {
@@ -73,8 +82,14 @@ const AddRecipe = () => {
               Tell us how you cook it, what makes it special, and the small tips you never forget. We turn your notes into a friendly guide for every Island Table cook.
             </p>
           </div>
-          <div className="hero-panel" aria-hidden="true">
-            <img src="https://images.unsplash.com/photo-1588166745650-771ecfcf35c1?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Home cook preparing Sri Lankan ingredients" />
+          <div className="hero-panel">
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/a/a3/Chicken_Kottu.jpg" 
+              alt="Home cook preparing Sri Lankan ingredients"
+              onError={(e) => {
+                e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg';
+              }}
+            />
           </div>
         </div>
       </section>
@@ -100,11 +115,33 @@ const AddRecipe = () => {
               <label htmlFor="difficulty">Difficulty</label>
               <input id="difficulty" name="difficulty" value={form.difficulty} onChange={handleChange} placeholder="Easy, Medium, or Festive" />
             </div>
+            <div className="form-row">
+              <label htmlFor="servings">Servings</label>
+              <input id="servings" name="servings" type="number" min="1" max="20" value={form.servings} onChange={handleChange} placeholder="4" />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label htmlFor="tags">Tags</label>
+            <input id="tags" name="tags" value={form.tags} onChange={handleChange} placeholder="Spicy, Vegetarian, Quick, Festival" />
+            <span className="field-hint">Separate tags with commas. E.g: Spicy, Quick, Vegetarian</span>
           </div>
 
           <div className="form-row">
             <label htmlFor="image">Cover image URL</label>
-            <input id="image" name="image" value={form.image} onChange={handleChange} placeholder="https://" />
+            <input id="image" name="image" value={form.image} onChange={handleChange} placeholder="https://..." />
+            {imagePreview && (
+              <div className="image-preview">
+                <img 
+                  src={imagePreview} 
+                  alt="Recipe preview"
+                  onError={(e) => {
+                    e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg';
+                    setImagePreview('');
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <div className="form-row">

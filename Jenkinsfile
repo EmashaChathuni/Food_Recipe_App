@@ -5,22 +5,26 @@ pipeline {
         DOCKERHUB_NAMESPACE = 'emashachathuni'
         BACKEND_IMAGE_NAME = 'island-table-backend'
         FRONTEND_IMAGE_NAME = 'island-table-frontend'
-        IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : env.BUILD_NUMBER}"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_CREDENTIAL_ID = 'dockerhub-credentials'
     }
 
     options {
         timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
     stages {
-        stage('Checkout') {
+        stage('🔍 Checkout') {
             steps {
+                echo '📥 Checking out source code...'
                 checkout scm
             }
         }
 
-        stage('Build Backend Image') {
+        stage('📦 Build Backend Image') {
             steps {
+                echo '🔨 Building backend Docker image...'
                 script {
                     sh """
                         docker build \
@@ -32,8 +36,9 @@ pipeline {
             }
         }
 
-        stage('Build Frontend Image') {
+        stage('📦 Build Frontend Image') {
             steps {
+                echo '🔨 Building frontend Docker image...'
                 script {
                     sh """
                         docker build \
@@ -45,19 +50,22 @@ pipeline {
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('🐳 Push to Docker Hub') {
             steps {
+                echo '⬆️ Pushing images to Docker Hub...'
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-credentials',
+                    credentialsId: "${DOCKER_CREDENTIAL_ID}",
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         
+                        echo "Pushing backend images..."
                         docker push ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                         docker push ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest
                         
+                        echo "Pushing frontend images..."
                         docker push ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
                         docker push ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest
                         
@@ -66,19 +74,31 @@ pipeline {
                 }
             }
         }
+
+        stage('🧹 Cleanup') {
+            steps {
+                echo '🗑️ Cleaning up old images...'
+                sh '''
+                    docker image prune -f || true
+                    docker system prune -f || true
+                '''
+            }
+        }
     }
 
     post {
         always {
-            sh 'docker image prune -f || true'
+            echo '📊 Pipeline execution completed.'
         }
         success {
-            echo "✅ Successfully built and pushed Docker images!"
-            echo "Backend: ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
-            echo "Frontend: ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+            echo '✅ SUCCESS! Docker images built and pushed successfully!'
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Backend Image: ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+            echo "Frontend Image: ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         }
         failure {
-            echo "❌ Build or push failed. Check logs above."
+            echo '❌ FAILED! Build or push failed. Check logs above for details.'
         }
     }
 }

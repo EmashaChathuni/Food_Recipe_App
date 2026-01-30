@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import RecipeCard from '../Components/RecipeCard';
+import RecipeCardSkeleton from '../Components/RecipeCardSkeleton';
 import sampleRecipes from '../data/SampleRecipes';
 import './Recipes.css';
 
 const Recipes = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
+  const [selectedTag, setSelectedTag] = useState('');
+  const [difficulty, setDifficulty] = useState('All');
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('favorites') || '[]');
@@ -17,6 +22,8 @@ const Recipes = () => {
     }
   });
   const [recipes, setRecipes] = useState(sampleRecipes);
+  const [trendingRecipes, setTrendingRecipes] = useState([]);
+  const [allTags, setAllTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,9 +33,15 @@ const Recipes = () => {
       setLoading(true);
       try {
         const base = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000/api';
-        const response = await axios.get(`${base}/recipes`);
+        const [recipesRes, trendingRes, tagsRes] = await Promise.all([
+          axios.get(`${base}/recipes`),
+          axios.get(`${base}/recipes/trending/top?limit=3`).catch(() => ({ data: [] })),
+          axios.get(`${base}/tags`).catch(() => ({ data: [] }))
+        ]);
+        
         if (!mounted) return;
-        const apiRecipes = response.data?.data || response.data?.recipes || response.data || [];
+        
+        const apiRecipes = recipesRes.data?.data || recipesRes.data?.recipes || recipesRes.data || [];
         const demo = (() => {
           try {
             return JSON.parse(localStorage.getItem('recipes_demo') || '[]');
@@ -38,6 +51,8 @@ const Recipes = () => {
         })();
         const merged = [...demo, ...apiRecipes];
         setRecipes(merged.length ? merged : sampleRecipes);
+        setTrendingRecipes(trendingRes.data || []);
+        setAllTags(tagsRes.data || []);
         setError(null);
       } catch (err) {
         console.error('Failed to load recipes', err);
@@ -83,14 +98,42 @@ const Recipes = () => {
     return Array.from(unique);
   }, [recipes]);
 
+  const difficulties = ['All', 'Easy', 'Intermediate', 'Advanced'];
+
   const filtered = useMemo(() => {
     return recipes.filter((recipe) => {
       const title = (recipe.title || recipe.name || '').toLowerCase();
-      const matchesQuery = query ? title.includes(query.toLowerCase()) : true;
+      const description = (recipe.description || '').toLowerCase();
+      const ingredients = (recipe.ingredients || []).join(' ').toLowerCase();
+      const searchText = query.toLowerCase();
+      
+      const matchesQuery = query ? (
+        title.includes(searchText) || 
+        description.includes(searchText) || 
+        ingredients.includes(searchText)
+      ) : true;
+      
       const matchesCategory = category === 'All' ? true : recipe.category === category;
-      return matchesQuery && matchesCategory;
+      const matchesDifficulty = difficulty === 'All' ? true : recipe.difficulty === difficulty;
+      const matchesTag = selectedTag ? (recipe.tags || []).includes(selectedTag) : true;
+      
+      return matchesQuery && matchesCategory && matchesDifficulty && matchesTag;
     });
-  }, [query, category, recipes]);
+  }, [query, category, difficulty, selectedTag, recipes]);
+
+  const handleRandomRecipe = async () => {
+    try {
+      const base = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000/api';
+      const res = await axios.get(`${base}/recipes/random/one`);
+      const randomRecipe = res.data;
+      navigate(`/recipes/${randomRecipe._id || randomRecipe.id}`);
+    } catch (err) {
+      const random = recipes[Math.floor(Math.random() * recipes.length)];
+      if (random) {
+        navigate(`/recipes/${random._id || random.id}`);
+      }
+    }
+  };
 
   const toggleFavorite = (id) => {
     if (isAuthenticated) {
@@ -130,44 +173,118 @@ const Recipes = () => {
               Search for a favourite dish or browse by mood. Each recipe explains the ingredients, spice level, and easy steps so anyone in your home can cook along.
             </p>
             <div className="hero-search">
-              <label className="visually-hidden" htmlFor="recipe-search">Search recipes</label>
               <input
-                id="recipe-search"
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Try ‘kottu’, ‘parippu’, or ‘hoppers’"
+                placeholder="Try 'kottu', 'parippu', or 'hoppers'"
               />
+              <button className="random-btn" onClick={handleRandomRecipe} title="Surprise me">
+                🎲 Random
+              </button>
             </div>
           </div>
-          <div className="hero-image" aria-hidden="true">
-            <img src="https://images.unsplash.com/photo-1624602546749-4b86465534f3?q=80&w=1240&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Sri Lankan curry spread" />
+          <div className="hero-image">
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/0/07/Lunumiris_with_Appam.JPG" 
+              alt="Sri Lankan curry spread"
+              onError={(e) => {
+                e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg';
+              }}
+            />
           </div>
         </div>
       </section>
 
-      <div className="container">
-        <div className="filter-row">
-          <div className="filter-chips">
-            {categories.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={`filter-chip ${item === category ? 'is-active' : ''}`}
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
+      {trendingRecipes.length > 0 && (
+        <section className="trending-section">
+          <div className="container">
+            <h2>🔥 Trending Recipes</h2>
+            <div className="trending-grid">
+              {trendingRecipes.map((recipe) => (
+                <RecipeCard
+                  key={recipe._id || recipe.id}
+                  recipe={recipe}
+                  onToggleFavorite={toggleFavorite}
+                  isFavorite={favorites.includes(recipe._id || recipe.id)}
+                />
+              ))}
+            </div>
           </div>
+        </section>
+      )}
+
+      <div className="container">
+        <div className="filters-section">
+          <div className="filter-group">
+            <label>Category</label>
+            <div className="filter-chips">
+              {categories.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={`filter-chip ${item === category ? 'is-active' : ''}`}
+                  onClick={() => setCategory(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <label>Difficulty</label>
+            <div className="filter-chips">
+              {difficulties.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={`filter-chip ${item === difficulty ? 'is-active' : ''}`}
+                  onClick={() => setDifficulty(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {allTags.length > 0 && (
+            <div className="filter-group">
+              <label>Tags</label>
+              <div className="filter-chips">
+                <button
+                  type="button"
+                  className={`filter-chip ${!selectedTag ? 'is-active' : ''}`}
+                  onClick={() => setSelectedTag('')}
+                >
+                  All
+                </button>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={`filter-chip ${tag === selectedTag ? 'is-active' : ''}`}
+                    onClick={() => setSelectedTag(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="filter-meta">
-            <span>{filtered.length} recipes</span>
+            <span>{filtered.length} recipes found</span>
             {error && <span className="filter-notice">{error}</span>}
           </div>
         </div>
 
         {loading ? (
-          <div className="card loading-card">Loading seasonal menus...</div>
+          <div className="recipe-grid">
+            {[...Array(6)].map((_, i) => (
+              <RecipeCardSkeleton key={i} />
+            ))}
+          </div>
         ) : (
           <div className="recipe-results">
             {filtered.length ? (
@@ -182,11 +299,16 @@ const Recipes = () => {
                 ))}
               </div>
             ) : (
-              <div className="card empty-card">
+              <div className="empty-state">
                 <h3>No dishes found.</h3>
                 <p>Try another word or explore a different category to spot more Sri Lankan favourites.</p>
-                <button type="button" className="btn btn-primary" onClick={() => setCategory('All')}>
-                  Reset filters
+                <button type="button" className="btn-reset" onClick={() => {
+                  setCategory('All');
+                  setDifficulty('All');
+                  setSelectedTag('');
+                  setQuery('');
+                }}>
+                  Reset all filters
                 </button>
               </div>
             )}

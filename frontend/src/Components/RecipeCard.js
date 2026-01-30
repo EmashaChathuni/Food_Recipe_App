@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import StarRating from './StarRating';
 import './RecipeCard.css';
 
 const RecipeCard = ({ recipe, onToggleFavorite, isFavorite }) => {
@@ -26,6 +27,12 @@ const RecipeCard = ({ recipe, onToggleFavorite, isFavorite }) => {
             {isFavorite ? '♥' : '♡'}
           </button>
         </div>
+        {recipe.avgRating > 0 && (
+          <div className="recipe-card-rating">
+            <StarRating rating={recipe.avgRating} readonly size="small" />
+            <span className="rating-text">({recipe.reviewCount})</span>
+          </div>
+        )}
         <p className="recipe-card-description">
           {recipe.description || 'Simple instructions and familiar island flavours for any day of the week.'}
         </p>
@@ -33,6 +40,13 @@ const RecipeCard = ({ recipe, onToggleFavorite, isFavorite }) => {
           <span>{prep}</span>
           <span>{difficulty}</span>
         </div>
+        {recipe.tags && recipe.tags.length > 0 && (
+          <div className="recipe-card-tags">
+            {recipe.tags.slice(0, 3).map((tag, i) => (
+              <span key={i} className="tag-badge">{tag}</span>
+            ))}
+          </div>
+        )}
         <Link to={`/recipes/${id}`} className="recipe-card-link-action">View full recipe</Link>
       </div>
     </article>

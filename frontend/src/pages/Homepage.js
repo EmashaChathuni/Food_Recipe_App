@@ -145,8 +145,6 @@ const HomePage = () => {
   const heroHighlights = useMemo(() => recipes.slice(0, 3), [recipes]);
   const recentRecipes = useMemo(() => recipes.slice(0, 8), [recipes]);
 
-  const recentRecipes = useMemo(() => recipes.slice(0, 8), [recipes]);
-
   return (
     <div className="homepage">
       <section className="hero-section">

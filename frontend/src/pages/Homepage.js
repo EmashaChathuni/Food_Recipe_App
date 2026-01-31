@@ -77,8 +77,6 @@ const HomePage = () => {
   const [trendingRecipes, setTrendingRecipes] = useState([]);
   const [randomRecipe, setRandomRecipe] = useState(null);
 
-  const [randomRecipe, setRandomRecipe] = useState(null);
-
   useEffect(() => {
     const fetchRecipes = async () => {
       try {

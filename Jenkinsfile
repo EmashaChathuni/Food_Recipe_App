@@ -6,7 +6,7 @@ pipeline {
         BACKEND_IMAGE_NAME = 'island-table-backend'
         FRONTEND_IMAGE_NAME = 'island-table-frontend'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        DOCKER_CREDENTIAL_ID = 'dockerhub-credentials'
+        DOCKER_CREDENTIAL_ID = 'dockerhub-pipeline'
     }
 
     options {
@@ -65,7 +65,7 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                echo '⬆️ Pushing images to Docker Hub...'
+                echo '⬆Pushing images to Docker Hub...'
                 withCredentials([usernamePassword(
                     credentialsId: "${DOCKER_CREDENTIAL_ID}",
                     usernameVariable: 'DOCKER_USER',

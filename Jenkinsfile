@@ -18,7 +18,8 @@ pipeline {
         stage('🔍 Checkout') {
             steps {
                 echo ' Checking out source code...'
-                checkout scm                sh '''
+                checkout scm
+                sh '''
                     echo "Current directory: $(pwd)"
                     echo "Files in workspace:"
                     ls -la
@@ -26,7 +27,8 @@ pipeline {
                     ls -la frontend/ || echo "Frontend directory not found!"
                     echo "Backend directory:"
                     ls -la backend/ || echo "Backend directory not found!"
-                '''            }
+                '''
+            }
         }
 
         stage(' Build Backend Image') {

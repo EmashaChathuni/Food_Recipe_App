@@ -17,40 +17,51 @@ pipeline {
     stages {
         stage('🔍 Checkout') {
             steps {
-                echo '📥 Checking out source code...'
-                checkout scm
-            }
+                echo ' Checking out source code...'
+                checkout scm                sh '''
+                    echo "Current directory: $(pwd)"
+                    echo "Files in workspace:"
+                    ls -la
+                    echo "Frontend directory:"
+                    ls -la frontend/ || echo "Frontend directory not found!"
+                    echo "Backend directory:"
+                    ls -la backend/ || echo "Backend directory not found!"
+                '''            }
         }
 
-        stage('📦 Build Backend Image') {
+        stage(' Build Backend Image') {
             steps {
-                echo '🔨 Building backend Docker image...'
+                echo ' Building backend Docker image...'
                 script {
                     sh """
+                        cd backend
                         docker build \
+                          --no-cache \
                           -t ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} \
                           -t ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest \
-                          ./backend
+                          .
                     """
                 }
             }
         }
 
-        stage('📦 Build Frontend Image') {
+        stage(' Build Frontend Image') {
             steps {
-                echo '🔨 Building frontend Docker image...'
+                echo 'Building frontend Docker image...'
                 script {
                     sh """
+                        cd frontend
                         docker build \
+                          --no-cache \
                           -t ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} \
                           -t ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest \
-                          ./frontend
+                          .
                     """
                 }
             }
         }
 
-        stage('🐳 Push to Docker Hub') {
+        stage('Push to Docker Hub') {
             steps {
                 echo '⬆️ Pushing images to Docker Hub...'
                 withCredentials([usernamePassword(

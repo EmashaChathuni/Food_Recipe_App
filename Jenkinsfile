@@ -8,7 +8,7 @@ pipeline {
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIAL_ID = 'dockerhub-pipeline'
         EC2_CREDENTIAL_ID = 'ec2-ssh-key'
-        EC2_HOST = 'your-ec2-public-ip-or-dns'
+        EC2_HOST = '13.232.46.238'
         EC2_USER = 'ubuntu'
     }
 

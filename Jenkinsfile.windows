@@ -1,0 +1,108 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_NAMESPACE = 'emashachathuni'
+        BACKEND_IMAGE_NAME = 'island-table-backend'
+        FRONTEND_IMAGE_NAME = 'island-table-frontend'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_CREDENTIAL_ID = 'dockerhub-pipeline'
+    }
+
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+                bat '''
+                    echo Current directory: %CD%
+                    echo Files in workspace:
+                    dir
+                    echo Frontend directory:
+                    dir frontend
+                    echo Backend directory:
+                    dir backend
+                '''
+            }
+        }
+
+        stage('Build Backend Image') {
+            steps {
+                echo 'Building backend Docker image...'
+                script {
+                    bat """
+                        cd backend
+                        docker build --no-cache -t ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} -t ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest .
+                    """
+                }
+            }
+        }
+
+        stage('Build Frontend Image') {
+            steps {
+                echo 'Building frontend Docker image...'
+                script {
+                    bat """
+                        cd frontend
+                        docker build --no-cache -t ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} -t ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest .
+                    """
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo 'Pushing images to Docker Hub...'
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDENTIAL_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat """
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                        
+                        echo Pushing backend images...
+                        docker push ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest
+                        
+                        echo Pushing frontend images...
+                        docker push ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest
+                        
+                        docker logout
+                    """
+                }
+            }
+        }
+
+        stage('Cleanup Docker') {
+            steps {
+                echo 'Cleaning up old images...'
+                bat '''
+                    docker image prune -f
+                    docker system prune -f
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
+        success {
+            echo 'SUCCESS: Application built and pushed successfully!'
+            echo "Backend Image: ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+            echo "Frontend Image: ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+            echo "Docker Hub: https://hub.docker.com/u/${DOCKERHUB_NAMESPACE}"
+        }
+        failure {
+            echo 'FAILED: Build failed. Check logs above for details.'
+        }
+    }
+}

@@ -7,6 +7,9 @@ pipeline {
         FRONTEND_IMAGE_NAME = 'island-table-frontend'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIAL_ID = 'dockerhub-pipeline'
+        EC2_CREDENTIAL_ID = 'ec2-ssh-key'
+        EC2_HOST = 'your-ec2-public-ip-or-dns'
+        EC2_USER = 'ubuntu'
     }
 
     options {
@@ -113,6 +116,62 @@ pipeline {
                                 docker push ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest
                                 
                                 docker logout
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                echo 'Deploying to EC2 instance...'
+                sshagent(credentials: ["${EC2_CREDENTIAL_ID}"]) {
+                    script {
+                        if (isUnix()) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
+                                    # Login to Docker Hub
+                                    echo "Logging into Docker Hub..."
+                                    
+                                    # Stop and remove existing containers
+                                    echo "Stopping existing containers..."
+                                    docker stop island-table-backend island-table-frontend || true
+                                    docker rm island-table-backend island-table-frontend || true
+                                    
+                                    # Pull latest images
+                                    echo "Pulling latest images..."
+                                    docker pull ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest
+                                    docker pull ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest
+                                    
+                                    # Run backend container
+                                    echo "Starting backend container..."
+                                    docker run -d \\
+                                        --name island-table-backend \\
+                                        --restart unless-stopped \\
+                                        -p 5000:5000 \\
+                                        ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest
+                                    
+                                    # Run frontend container
+                                    echo "Starting frontend container..."
+                                    docker run -d \\
+                                        --name island-table-frontend \\
+                                        --restart unless-stopped \\
+                                        -p 80:80 \\
+                                        ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest
+                                    
+                                    # Clean up old images
+                                    echo "Cleaning up old images..."
+                                    docker image prune -f
+                                    
+                                    # Show running containers
+                                    echo "Running containers:"
+                                    docker ps
+                                '
+                            """
+                        } else {
+                            bat """
+                                ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "docker stop island-table-backend island-table-frontend & docker rm island-table-backend island-table-frontend & docker pull ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest & docker pull ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest & docker run -d --name island-table-backend --restart unless-stopped -p 5000:5000 ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest & docker run -d --name island-table-frontend --restart unless-stopped -p 80:80 ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest & docker ps"
                             """
                         }
                     }

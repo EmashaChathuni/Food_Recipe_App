@@ -11,19 +11,19 @@ const HERO_IMAGES = [
 ];
 
 const highlightStats = [
-  { label: 'Authentic Recipes', value: '500+', icon: '🍛' },
-  { label: 'Home Cooks', value: '2.5K+', icon: '👨‍🍳' },
-  { label: 'Daily Visitors', value: '15K+', icon: '👥' },
-  { label: 'Countries', value: '45+', icon: '🌍' }
+  { label: 'Authentic Recipes', value: '500+', icon: '' },
+  { label: 'Home Cooks', value: '2.5K+', icon: '' },
+  { label: 'Daily Visitors', value: '15K+', icon: '' },
+  { label: 'Countries', value: '45+', icon: '' }
 ];
 
 const categories = [
-  { name: 'Breakfast', image: 'https://upload.wikimedia.org/wikipedia/commons/0/07/Lunumiris_with_Appam.JPG', count: '45+', icon: '🍳' },
-  { name: 'Curry', image: 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg', count: '120+', icon: '🍛' },
-  { name: 'Seafood', image: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Srilankan_fish_curry.JPG', count: '65+', icon: '🦞' },
-  { name: 'Dessert', image: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Watalappan_%2823091763250%29.jpg', count: '80+', icon: '🍰' },
-  { name: 'Snacks', image: 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Chicken_Kottu.jpg', count: '95+', icon: '🥟' },
-  { name: 'Beverages', image: 'https://upload.wikimedia.org/wikipedia/commons/1/17/Kiribath_%28milk_rice%29.jpg', count: '40+', icon: '🥤' }
+  { name: 'Breakfast', image: 'https://upload.wikimedia.org/wikipedia/commons/0/07/Lunumiris_with_Appam.JPG', count: '45+', icon: '' },
+  { name: 'Curry', image: 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg', count: '120+', icon: '' },
+  { name: 'Seafood', image: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Srilankan_fish_curry.JPG', count: '65+', icon: '' },
+  { name: 'Dessert', image: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Watalappan_%2823091763250%29.jpg', count: '80+', icon: '' },
+  { name: 'Snacks', image: 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Chicken_Kottu.jpg', count: '95+', icon: '' },
+  { name: 'Beverages', image: 'https://upload.wikimedia.org/wikipedia/commons/1/17/Kiribath_%28milk_rice%29.jpg', count: '40+', icon: '' }
 ];
 
 const featuredRecipes = [
@@ -58,15 +58,15 @@ const featuredRecipes = [
 
 const whyChooseUs = [
   { icon: '✓', title: 'Authentic Recipes', description: 'Traditional Sri Lankan recipes passed down through generations' },
-  { icon: '👨‍🍳', title: 'Expert Guidance', description: 'Step-by-step instructions with professional cooking tips' },
-  { icon: '🌿', title: 'Fresh Ingredients', description: 'Using locally sourced, organic ingredients for best taste' },
-  { icon: '⭐', title: 'Community Tested', description: 'Every recipe reviewed and rated by our cooking community' }
+  { icon: '', title: 'Expert Guidance', description: 'Step-by-step instructions with professional cooking tips' },
+  { icon: '', title: 'Fresh Ingredients', description: 'Using locally sourced, organic ingredients for best taste' },
+  { icon: '', title: 'Community Tested', description: 'Every recipe reviewed and rated by our cooking community' }
 ];
 
 const testimonials = [
-  { name: 'Priya Fernando', location: 'Colombo', text: 'Best recipe app for authentic Sri Lankan food! The instructions are so clear.', rating: 5, image: '👩' },
-  { name: 'Kasun Silva', location: 'Kandy', text: 'Finally found my grandma\'s kottu recipe here. Tastes just like home!', rating: 5, image: '👨' },
-  { name: 'Amara Perera', location: 'Galle', text: 'Love the variety of recipes. Perfect for beginners and experts alike.', rating: 5, image: '👩' }
+  { name: 'Priya Fernando', location: 'Colombo', text: 'Best recipe app for authentic Sri Lankan food! The instructions are so clear.', rating: 5, image: '' },
+  { name: 'Kasun Silva', location: 'Kandy', text: 'Finally found my grandma\'s kottu recipe here. Tastes just like home!', rating: 5, image: '' },
+  { name: 'Amara Perera', location: 'Galle', text: 'Love the variety of recipes. Perfect for beginners and experts alike.', rating: 5, image: '' }
 ];
 
 const HomePage = () => {
@@ -162,7 +162,7 @@ const HomePage = () => {
         <div className="hero-content-wrapper">
           <div className="container">
             <div className="hero-content">
-              <span className="hero-badge">🇱🇰 Authentic Sri Lankan Cuisine</span>
+              <span className="hero-badge">Authentic Sri Lankan Cuisine</span>
               <h1 className="hero-title">Discover Traditional Flavors</h1>
               <p className="hero-subtitle">
                 Explore 500+ authentic Sri Lankan recipes from breakfast hoppers to festive lamprais. 
@@ -179,15 +179,15 @@ const HomePage = () => {
                 />
                 <button type="submit" className="btn btn-primary">Search</button>
                 <button type="button" onClick={handleRandomRecipe} className="btn btn-secondary">
-                  🎲 Random Recipe
+                  Random Recipe
                 </button>
               </form>
 
               <div className="hero-quick-links">
-                <Link to="/recipes?category=Breakfast" className="quick-link">🍳 Breakfast</Link>
-                <Link to="/recipes?category=Curry" className="quick-link">🍛 Curries</Link>
-                <Link to="/recipes?category=Dessert" className="quick-link">🍰 Desserts</Link>
-                <Link to="/recipes?category=Snacks" className="quick-link">🥟 Snacks</Link>
+                <Link to="/recipes?category=Breakfast" className="quick-link">Breakfast</Link>
+                <Link to="/recipes?category=Curry" className="quick-link">Curries</Link>
+                <Link to="/recipes?category=Dessert" className="quick-link">Desserts</Link>
+                <Link to="/recipes?category=Snacks" className="quick-link">Snacks</Link>
               </div>
             </div>
           </div>
@@ -262,9 +262,9 @@ const HomePage = () => {
                   <h3 className="featured-title">{recipe.title}</h3>
                   <p className="featured-description">{recipe.description}</p>
                   <div className="featured-meta">
-                    <span>⏱️ {recipe.time}</span>
-                    <span>📊 {recipe.difficulty}</span>
-                    <span>⭐ {recipe.rating} ({recipe.reviews})</span>
+                    <span>{recipe.time}</span>
+                    <span>{recipe.difficulty}</span>
+                    <span>{recipe.rating} ({recipe.reviews})</span>
                   </div>
                   <Link to="/recipes" className="btn btn-outline">View Recipe</Link>
                 </div>
@@ -276,7 +276,7 @@ const HomePage = () => {
 
       <section className="container section trending-section">
         <div className="section-header">
-          <h2 className="section-title">🔥 Trending Now</h2>
+          <h2 className="section-title">Trending Now</h2>
           <p className="section-description">Most popular recipes this week from our community</p>
           <Link to="/recipes" className="section-link">View all →</Link>
         </div>
@@ -289,14 +289,14 @@ const HomePage = () => {
               className="trending-card"
             >
               <div className="trending-image" style={{ backgroundImage: `url(${recipe.image || 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg'})` }}>
-                <div className="trending-badge">🔥 Trending</div>
+                <div className="trending-badge">Trending</div>
               </div>
               <div className="trending-content">
                 <span className="trending-category">{recipe.category}</span>
                 <h3 className="trending-title">{recipe.title || recipe.name}</h3>
                 <div className="trending-meta">
-                  <span>⏱️ {recipe.prepTime}</span>
-                  <span>📊 {recipe.difficulty}</span>
+                  <span>{recipe.prepTime}</span>
+                  <span>{recipe.difficulty}</span>
                 </div>
               </div>
             </Link>
@@ -360,7 +360,7 @@ const HomePage = () => {
               <div key={index} className="testimonial-card">
                 <div className="testimonial-rating">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <span key={i}>⭐</span>
+                    <span key={i}>★</span>
                   ))}
                 </div>
                 <p className="testimonial-text">"{testimonial.text}"</p>
@@ -397,7 +397,7 @@ const HomePage = () => {
         <div className="container">
           <div className="newsletter-card">
             <div className="newsletter-content">
-              <h3 className="newsletter-title">🍛 Get Weekly Recipe Ideas</h3>
+              <h3 className="newsletter-title">Get Weekly Recipe Ideas</h3>
               <p className="newsletter-description">
                 Subscribe to receive new recipes, cooking tips, and Sri Lankan food stories
               </p>

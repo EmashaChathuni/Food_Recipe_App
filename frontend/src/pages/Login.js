@@ -51,8 +51,8 @@ const Login = () => {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        setMessage('Login successful!');
-        setTimeout(() => navigate('/dashboard'), 800);
+        setMessage('Login successful! Redirecting to your favorites...');
+        setTimeout(() => navigate('/favorites'), 800);
       } else {
         setMessage(result.message || 'Login failed');
       }

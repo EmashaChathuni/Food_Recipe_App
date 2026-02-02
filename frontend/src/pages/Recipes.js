@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import RecipeCard from '../Components/RecipeCard';
 import RecipeCardSkeleton from '../Components/RecipeCardSkeleton';
 import sampleRecipes from '../data/SampleRecipes';
+import { searchRecipesWithAI } from '../services/geminiService';
 import './Recipes.css';
 
 const Recipes = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [selectedTag, setSelectedTag] = useState('');
@@ -22,10 +24,32 @@ const Recipes = () => {
     }
   });
   const [recipes, setRecipes] = useState(sampleRecipes);
+  const [aiRecipes, setAiRecipes] = useState([]);
+  const [isAISearch, setIsAISearch] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [trendingRecipes, setTrendingRecipes] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Initialize search and filters from URL parameters
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    const categoryParam = searchParams.get('category');
+    
+    if (searchParam) {
+      setQuery(searchParam);
+      // Trigger AI search when search parameter is present
+      handleAISearch(searchParam);
+    } else {
+      // Clear AI results when no search
+      setAiRecipes([]);
+      setIsAISearch(false);
+    }
+    if (categoryParam) {
+      setCategory(categoryParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     let mounted = true;
@@ -101,6 +125,12 @@ const Recipes = () => {
   const difficulties = ['All', 'Easy', 'Intermediate', 'Advanced'];
 
   const filtered = useMemo(() => {
+    // If AI search is active and we have AI results, use those
+    if (isAISearch && aiRecipes.length > 0) {
+      return aiRecipes;
+    }
+    
+    // Otherwise, filter regular recipes
     return recipes.filter((recipe) => {
       const title = (recipe.title || recipe.name || '').toLowerCase();
       const description = (recipe.description || '').toLowerCase();
@@ -119,7 +149,7 @@ const Recipes = () => {
       
       return matchesQuery && matchesCategory && matchesDifficulty && matchesTag;
     });
-  }, [query, category, difficulty, selectedTag, recipes]);
+  }, [query, category, difficulty, selectedTag, recipes, isAISearch, aiRecipes]);
 
   const handleRandomRecipe = async () => {
     try {
@@ -162,6 +192,41 @@ const Recipes = () => {
     });
   };
 
+  // AI Search Handler
+  const handleAISearch = async (searchQuery) => {
+    if (!searchQuery || searchQuery.trim() === '') {
+      setIsAISearch(false);
+      setAiRecipes([]);
+      return;
+    }
+
+    setAiLoading(true);
+    setIsAISearch(true);
+    
+    try {
+      const results = await searchRecipesWithAI(searchQuery);
+      
+      if (results.length === 0) {
+        // Fallback to regular search when AI returns no results
+        console.log('AI returned no results, falling back to database search');
+        setIsAISearch(false);
+        setAiRecipes([]);
+        setError(null);
+      } else {
+        setAiRecipes(results);
+        setError(null);
+      }
+    } catch (err) {
+      console.error('AI search failed:', err);
+      // Fallback to regular search on error
+      setIsAISearch(false);
+      setAiRecipes([]);
+      setError(null);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="recipes-page">
       <section className="recipes-hero">
@@ -180,7 +245,7 @@ const Recipes = () => {
                 placeholder="Try 'kottu', 'parippu', or 'hoppers'"
               />
               <button className="random-btn" onClick={handleRandomRecipe} title="Surprise me">
-                🎲 Random
+                Random
               </button>
             </div>
           </div>
@@ -199,7 +264,7 @@ const Recipes = () => {
       {trendingRecipes.length > 0 && (
         <section className="trending-section">
           <div className="container">
-            <h2>🔥 Trending Recipes</h2>
+            <h2>Trending Recipes</h2>
             <div className="trending-grid">
               {trendingRecipes.map((recipe) => (
                 <RecipeCard
@@ -215,6 +280,24 @@ const Recipes = () => {
       )}
 
       <div className="container">
+        {query && (
+          <div className="search-result-header">
+            <h2>
+              {isAISearch && aiRecipes.length > 0 && '🤖 AI-Powered '} Search Results for "{query}"
+            </h2>
+            <p>
+              {aiLoading ? (
+                '🔍 Searching with AI...'
+              ) : (
+                <>
+                  Found {filtered.length} delicious recipe{filtered.length !== 1 ? 's' : ''}
+                  {isAISearch && aiRecipes.length > 0 && ' generated by Gemini AI'}
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        
         <div className="filters-section">
           <div className="filter-group">
             <label>Category</label>
@@ -279,7 +362,7 @@ const Recipes = () => {
           </div>
         </div>
 
-        {loading ? (
+        {loading || aiLoading ? (
           <div className="recipe-grid">
             {[...Array(6)].map((_, i) => (
               <RecipeCardSkeleton key={i} />

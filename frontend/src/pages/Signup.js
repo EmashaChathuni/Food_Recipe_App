@@ -71,8 +71,8 @@ const Signup = () => {
     try {
       const result = await signup(formData.name, formData.email, formData.password, formData.confirmPassword);
       if (result.success) {
-        setMessage('Account created successfully!');
-        setTimeout(() => navigate('/dashboard'), 1200);
+        setMessage('Account created successfully! Redirecting to your favorites...');
+        setTimeout(() => navigate('/favorites'), 1500);
       } else {
         setMessage(result.message || 'Signup failed');
       }

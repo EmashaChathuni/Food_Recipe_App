@@ -32,7 +32,6 @@ const Navbar = () => {
           <Link to="/recipes" className="nav-item">All Dishes</Link>
           <Link to="/favorites" className="nav-item">My Favourites</Link>
           <Link to="/add-recipe" className="nav-item">Share a Recipe</Link>
-          {isAuthenticated && <Link to="/dashboard" className="nav-item">Dashboard</Link>}
         </nav>
 
         <div className="nav-actions">

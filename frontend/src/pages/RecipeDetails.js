@@ -116,10 +116,10 @@ const RecipeDetails = () => {
             
             <div className="recipe-actions">
               <button onClick={handleShare} className="btn-secondary">
-                📤 Share
+                Share
               </button>
               <button onClick={handlePrint} className="btn-secondary">
-                🖨️ Print
+                Print
               </button>
             </div>
           </div>

@@ -134,6 +134,10 @@ pipeline {
                                     # Login to Docker Hub
                                     echo "Logging into Docker Hub..."
                                     
+                                    # Create network if it doesn't exist
+                                    echo "Creating docker network..."
+                                    docker network create food-recipe-network || true
+
                                     # Stop and remove existing containers
                                     echo "Stopping existing containers..."
                                     docker stop island-table-backend island-table-frontend || true
@@ -148,6 +152,7 @@ pipeline {
                                     echo "Starting backend container..."
                                     docker run -d \\
                                         --name island-table-backend \\
+                                        --network food-recipe-network \\
                                         --restart unless-stopped \\
                                         -p 5000:5000 \\
                                         ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest
@@ -156,6 +161,7 @@ pipeline {
                                     echo "Starting frontend container..."
                                     docker run -d \\
                                         --name island-table-frontend \\
+                                        --network food-recipe-network \\
                                         --restart unless-stopped \\
                                         -p 80:80 \\
                                         ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest
@@ -171,7 +177,7 @@ pipeline {
                             """
                         } else {
                             bat """
-                                ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "docker stop island-table-backend island-table-frontend & docker rm island-table-backend island-table-frontend & docker pull ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest & docker pull ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest & docker run -d --name island-table-backend --restart unless-stopped -p 5000:5000 ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest & docker run -d --name island-table-frontend --restart unless-stopped -p 80:80 ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest & docker ps"
+                                ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "docker network create food-recipe-network || true & docker stop island-table-backend island-table-frontend & docker rm island-table-backend island-table-frontend & docker pull ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest & docker pull ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest & docker run -d --name island-table-backend --network food-recipe-network --restart unless-stopped -p 5000:5000 ${DOCKERHUB_NAMESPACE}/${BACKEND_IMAGE_NAME}:latest & docker run -d --name island-table-frontend --network food-recipe-network --restart unless-stopped -p 80:80 ${DOCKERHUB_NAMESPACE}/${FRONTEND_IMAGE_NAME}:latest & docker ps"
                             """
                         }
                     }

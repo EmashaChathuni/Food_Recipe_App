@@ -134,7 +134,7 @@ pipeline {
                                     # Login to Docker Hub
                                     echo "Logging into Docker Hub..."
                                     
-                                    # Create network if it doesn't exist
+                                    # Create network if it does not exist
                                     echo "Creating docker network..."
                                     docker network create food-recipe-network || true
 

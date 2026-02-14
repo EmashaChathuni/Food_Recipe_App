@@ -163,7 +163,7 @@ const HomePage = () => {
           <div className="container">
             <div className="hero-content">
               <span className="hero-badge">Authentic Sri Lankan Cuisine</span>
-              <h1 className="hero-title">Discover Traditional Foods</h1>
+              <h1 className="hero-title">Emasha Chathuni</h1>
               <p className="hero-subtitle">
                 Explore 500+ authentic Sri Lankan recipes from breakfast hoppers to festive lamprais. 
                 Cook with confidence using our step-by-step guides and expert tips.

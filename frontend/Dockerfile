@@ -12,6 +12,9 @@ RUN npm install
 # Copy application code
 COPY . .
 
+# Set backend URL to use /api proxy (nginx will forward to backend)
+ENV REACT_APP_BACKEND_URL=/api
+
 # Build the app
 RUN npm run build
 

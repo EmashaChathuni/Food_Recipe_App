@@ -71,6 +71,14 @@ resource "aws_security_group" "ssh_http" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Backend API"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -89,11 +97,54 @@ resource "aws_instance" "ubuntu" {
     Name = var.instance_name
   }
 
-  # Simple user-data script to keep packages up to date
+  # Install Docker and deploy Food Recipe App
   user_data = <<-EOF
               #!/bin/bash
+              set -e
+              
+              # Update system
               apt-get update -y
               apt-get upgrade -y
+              
+              # Install Docker
+              apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+              apt-get update -y
+              apt-get install -y docker-ce docker-ce-cli containerd.io
+              
+              # Start Docker
+              systemctl start docker
+              systemctl enable docker
+              
+              # Add ubuntu user to docker group
+              usermod -aG docker ubuntu
+              
+              # Pull and run containers
+              docker network create food-recipe-network || true
+              docker pull emashachathuni/island-table-backend:latest
+              docker pull emashachathuni/island-table-frontend:latest
+              
+              # Run backend container
+              docker run -d \
+                --name island-table-backend \
+                --network food-recipe-network \
+                --restart unless-stopped \
+                -p 5000:5000 \
+                -e PORT=5000 \
+                -e NODE_ENV=production \
+                emashachathuni/island-table-backend:latest
+              
+              # Run frontend container
+              docker run -d \
+                --name island-table-frontend \
+                --network food-recipe-network \
+                --restart unless-stopped \
+                -p 80:80 \
+                emashachathuni/island-table-frontend:latest
+              
+              # Signal completion
+              touch /var/lib/cloud/instance/deployment-complete
               EOF
 }
 
@@ -106,4 +157,9 @@ output "public_ip" {
 output "public_dns" {
   value       = aws_instance.ubuntu.public_dns
   description = "Public DNS of the EC2 instance"
+}
+
+output "application_url" {
+  value       = "http://${aws_instance.ubuntu.public_ip}"
+  description = "URL to access the Food Recipe App"
 }

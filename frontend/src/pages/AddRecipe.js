@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { RECIPE_CATEGORIES, getSubcategories } from '../data/categories';
 import './AddRecipe.css';
 
 const initialForm = {
   title: '',
   category: '',
+  subcategory: '',
   prepTime: '',
+  cookingTime: '',
   difficulty: '',
   image: '',
   ingredients: '',
@@ -16,11 +20,24 @@ const initialForm = {
 };
 
 const AddRecipe = () => {
+  const { isAuthenticated } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [imagePreview, setImagePreview] = useState('');
+  const [subcategories, setSubcategories] = useState([]);
   const navigate = useNavigate();
+
+  const categories = Object.keys(RECIPE_CATEGORIES);
+
+  useEffect(() => {
+    // Update subcategories when category changes
+    if (form.category) {
+      const subs = getSubcategories(form.category);
+      setSubcategories(subs.map(sub => sub.name));
+      setForm(prev => ({ ...prev, subcategory: '' })); // Reset subcategory
+    }
+  }, [form.category]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -33,26 +50,36 @@ const AddRecipe = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    
+    if (!isAuthenticated) {
+      setMessage('');
+      navigate('/login?redirect=/create');
+      return;
+    }
+    
     setSaving(true);
     setMessage('');
 
     const payload = {
       title: form.title,
       category: form.category,
+      subcategory: form.subcategory,
       prepTime: form.prepTime,
+      cookingTime: form.cookingTime,
       difficulty: form.difficulty,
       image: form.image || 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg',
       ingredients: form.ingredients.split('\n').map((item) => item.trim()).filter(Boolean),
       steps: form.steps.split('\n').map((item) => item.trim()).filter(Boolean),
       tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       servings: parseInt(form.servings) || 4,
+      addedByUser: true,
     };
 
     try {
       const base = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000/api';
       await axios.post(`${base}/recipes`, payload, { withCredentials: true });
-      setMessage('Recipe saved and shared with Island Table.');
-      setTimeout(() => navigate('/recipes'), 600);
+      setMessage('🎉 Recipe shared! It will appear in All Dishes under "Added by valued users".');
+      setTimeout(() => navigate('/recipes'), 1200);
     } catch (error) {
       console.error('Failed to save recipe', error);
       const newRecipe = { id: String(Date.now()), ...payload };
@@ -64,8 +91,8 @@ const AddRecipe = () => {
         }
       })();
       localStorage.setItem('recipes_demo', JSON.stringify([newRecipe, ...existing]));
-  setMessage('Saved to this device. Sign in later to keep it across devices.');
-      setTimeout(() => navigate('/recipes'), 800);
+      setMessage('✓ Recipe saved locally. Sign in later to keep it across all devices.');
+      setTimeout(() => navigate('/recipes'), 1000);
     } finally {
       setSaving(false);
     }
@@ -104,17 +131,45 @@ const AddRecipe = () => {
 
           <div className="form-grid">
             <div className="form-row">
-              <label htmlFor="category">Category</label>
-              <input id="category" name="category" value={form.category} onChange={handleChange} placeholder="Breakfast, Curry, Street Food..." />
+              <label htmlFor="category">Category *</label>
+              <select id="category" name="category" value={form.category} onChange={handleChange} required>
+                <option value="">Select a category</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
+            
             <div className="form-row">
-              <label htmlFor="prepTime">Prep time</label>
-              <input id="prepTime" name="prepTime" value={form.prepTime} onChange={handleChange} placeholder="E.g. 45 mins" />
+              <label htmlFor="subcategory">Subcategory {form.category && '*'}</label>
+              <select id="subcategory" name="subcategory" value={form.subcategory} onChange={handleChange} disabled={!form.category}>
+                <option value="">Select a subcategory</option>
+                {subcategories.map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
             </div>
+
+            <div className="form-row">
+              <label htmlFor="prepTime">Prep Time</label>
+              <input id="prepTime" name="prepTime" value={form.prepTime} onChange={handleChange} placeholder="e.g. 15 mins" />
+            </div>
+
+            <div className="form-row">
+              <label htmlFor="cookingTime">Cooking Time</label>
+              <input id="cookingTime" name="cookingTime" value={form.cookingTime} onChange={handleChange} placeholder="e.g. 30 mins" />
+            </div>
+
             <div className="form-row">
               <label htmlFor="difficulty">Difficulty</label>
-              <input id="difficulty" name="difficulty" value={form.difficulty} onChange={handleChange} placeholder="Easy, Medium, or Festive" />
+              <select id="difficulty" name="difficulty" value={form.difficulty} onChange={handleChange}>
+                <option value="">Select difficulty</option>
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
             </div>
+
             <div className="form-row">
               <label htmlFor="servings">Servings</label>
               <input id="servings" name="servings" type="number" min="1" max="20" value={form.servings} onChange={handleChange} placeholder="4" />
@@ -171,9 +226,19 @@ const AddRecipe = () => {
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Save recipe'}
-            </button>
+            {!isAuthenticated ? (
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={() => navigate('/login?redirect=/create')}
+              >
+                🔐 Please login to share recipe
+              </button>
+            ) : (
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : '✓ Share this recipe'}
+              </button>
+            )}
           </div>
         </form>
       </div>

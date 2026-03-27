@@ -5,6 +5,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// Import categories
+const RECIPE_CATEGORIES = require('../models/categories');
+
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: true }));
@@ -30,7 +33,9 @@ function initDatabase() {
         name TEXT NOT NULL,
         title TEXT,
         category TEXT,
+        subcategory TEXT,
         prepTime TEXT,
+        cookingTime TEXT,
         difficulty TEXT,
         image TEXT,
         description TEXT,
@@ -44,6 +49,19 @@ function initDatabase() {
         FOREIGN KEY (author_id) REFERENCES users(id)
       )
     `);
+
+    // Add new columns if they don't exist (for existing databases)
+    db.run(`ALTER TABLE recipes ADD COLUMN subcategory TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.log('Note:', err.message);
+      }
+    });
+    
+    db.run(`ALTER TABLE recipes ADD COLUMN cookingTime TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.log('Note:', err.message);
+      }
+    });
 
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
@@ -223,18 +241,20 @@ app.get('/api/recipes/:id', (req, res) => {
 
 // Create new recipe
 app.post('/api/recipes', (req, res) => {
-  const { name, title, category, prepTime, difficulty, image, description, ingredients, steps, tags, servings } = req.body;
+  const { name, title, category, subcategory, prepTime, cookingTime, difficulty, image, description, ingredients, steps, tags, servings } = req.body;
   
   const query = `
-    INSERT INTO recipes (name, title, category, prepTime, difficulty, image, description, ingredients, steps, tags, servings)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO recipes (name, title, category, subcategory, prepTime, cookingTime, difficulty, image, description, ingredients, steps, tags, servings)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   
   const params = [
     name || title,
     title || name,
     category,
+    subcategory,
     prepTime,
+    cookingTime,
     difficulty,
     image,
     description,
@@ -364,6 +384,80 @@ app.get('/api/tags', (req, res) => {
     });
     
     res.json(Array.from(tagSet));
+  });
+});
+
+// ===== CATEGORIES ROUTES =====
+
+// Get all categories
+app.get('/api/categories', (req, res) => {
+  const categories = Object.keys(RECIPE_CATEGORIES).map(name => ({
+    name,
+    subcategories: RECIPE_CATEGORIES[name].subcategories
+  }));
+  
+  res.json(categories);
+});
+
+// Get subcategories for a specific category
+app.get('/api/categories/:category/subcategories', (req, res) => {
+  const categoryName = decodeURIComponent(req.params.category);
+  
+  if (RECIPE_CATEGORIES[categoryName]) {
+    res.json({
+      category: categoryName,
+      subcategories: RECIPE_CATEGORIES[categoryName].subcategories
+    });
+  } else {
+    res.status(404).json({ message: 'Category not found' });
+  }
+});
+
+// Get recipes by category and optional subcategory
+app.get('/api/categories/:category/recipes', (req, res) => {
+  const categoryName = decodeURIComponent(req.params.category);
+  const { subcategory } = req.query;
+  
+  if (!RECIPE_CATEGORIES[categoryName]) {
+    return res.status(404).json({ message: 'Category not found' });
+  }
+  
+  let query = `
+    SELECT r.*, 
+           COALESCE(AVG(rv.rating), 0) as avgRating,
+           COUNT(DISTINCT rv.id) as reviewCount,
+           u.name as authorName
+    FROM recipes r
+    LEFT JOIN reviews rv ON r.id = rv.recipe_id
+    LEFT JOIN users u ON r.author_id = u.id
+    WHERE r.category = ?
+  `;
+  
+  const params = [categoryName];
+  
+  if (subcategory) {
+    query += ' AND r.subcategory = ?';
+    params.push(decodeURIComponent(subcategory));
+  }
+  
+  query += ' GROUP BY r.id ORDER BY r.created_at DESC';
+  
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Database error', error: err.message });
+    }
+    
+    const recipes = rows.map(row => ({
+      ...row,
+      _id: row.id,
+      ingredients: row.ingredients ? JSON.parse(row.ingredients) : [],
+      steps: row.steps ? JSON.parse(row.steps) : [],
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      avgRating: Math.round(row.avgRating * 10) / 10,
+      reviewCount: row.reviewCount
+    }));
+    
+    res.json(recipes);
   });
 });
 

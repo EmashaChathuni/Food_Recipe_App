@@ -29,9 +29,9 @@ const Navbar = () => {
 
         <nav className="nav-links" aria-label="Primary">
           <Link to="/" className="nav-item">Home</Link>
-          <Link to="/recipes" className="nav-item">All Dishes</Link>
-          <Link to="/favorites" className="nav-item">My Favourites</Link>
-          <Link to="/add-recipe" className="nav-item">Share a Recipe</Link>
+          <Link to="/recipes" className="nav-item">🍳 All Dishes</Link>
+          <Link to="/favorites" className="nav-item">💕 My Favourites</Link>
+          <Link to="/add-recipe" className="nav-item">➕ Share a Recipe</Link>
         </nav>
 
         <div className="nav-actions">

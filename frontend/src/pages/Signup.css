@@ -1,10 +1,12 @@
 .signup-page {
   min-height: 100vh;
-  background: radial-gradient(circle at top right, rgba(240, 106, 45, 0.2), transparent 55%),
-    linear-gradient(180deg, #f3ede3, var(--color-page));
+  background: 
+    linear-gradient(135deg, rgba(230, 126, 34, 0.85), rgba(52, 73, 94, 0.85)),
+    url('https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=1200&h=1200&fit=crop') center/cover;
   display: grid;
   place-items: center;
   padding: 40px 16px;
+  position: relative;
 }
 
 .signup-container {

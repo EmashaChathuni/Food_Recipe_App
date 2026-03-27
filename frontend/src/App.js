@@ -15,15 +15,15 @@ function App() {
     <BrowserRouter>
       <Navbar />
       <Routes>
-  <Route path="/" element={<Homepage />} />
-  <Route path="/recipes" element={<Recipes />} />
-  <Route path="/recipes/:id" element={<RecipeDetails />} />
-  <Route path="/add-recipe" element={<AddRecipe />} />
-  <Route path="/create" element={<AddRecipe />} />
+        <Route path="/" element={<Homepage />} />
+        <Route path="/recipes" element={<Recipes />} />
+        <Route path="/recipes/:id" element={<RecipeDetails />} />
+        <Route path="/recipe/:id" element={<RecipeDetails />} />
+        <Route path="/add-recipe" element={<AddRecipe />} />
+        <Route path="/create" element={<AddRecipe />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        
       </Routes>
       <Footer />
     </BrowserRouter>

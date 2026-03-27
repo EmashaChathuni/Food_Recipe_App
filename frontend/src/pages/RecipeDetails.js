@@ -4,6 +4,8 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import StarRating from '../Components/StarRating';
 import ReviewSection from '../Components/ReviewSection';
+import sampleRecipes from '../data/SampleRecipes';
+import { getImageUrl, handleImageError } from '../utils/imageUtils';
 
 const RecipeDetails = () => {
   const { id } = useParams();
@@ -15,6 +17,17 @@ const RecipeDetails = () => {
     let mounted = true;
     (async () => {
       try {
+        // First, check sampleRecipes
+        const foundInSample = sampleRecipes.find((r) => (r.id === id) || (r._id === id));
+        if (foundInSample) {
+          if (mounted) {
+            setRecipe(foundInSample);
+            setServings(foundInSample.servings || 4);
+          }
+          return;
+        }
+        
+        // Then check localStorage
         const local = (() => {
           try {
             return JSON.parse(localStorage.getItem('recipes_demo') || '[]');
@@ -30,6 +43,8 @@ const RecipeDetails = () => {
           }
           return;
         }
+        
+        // Finally, try backend API
         const base = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000/api';
         const res = await axios.get(`${base}/recipes/${id}`);
         const data = res.data?.data || res.data?.recipe || res.data;
@@ -83,7 +98,10 @@ const RecipeDetails = () => {
     });
   };
 
-  if (!recipe) return <div className="container py-8">Loading recipe...</div>;
+  if (!recipe) return <div className="container py-8" style={{ padding: '2rem', textAlign: 'center' }}>
+    <h2>Recipe Not Found</h2>
+    <p>Sorry, we couldn't find this recipe. Please try again.</p>
+  </div>;
 
   return (
     <div className="recipe-details-page">
@@ -91,8 +109,9 @@ const RecipeDetails = () => {
         <div className="recipe-main">
           <div className="recipe-image-wrapper">
             <img 
-              src={recipe.image || 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg'} 
-              alt={recipe.title || recipe.name} 
+              src={getImageUrl(recipe)} 
+              alt={recipe.title || recipe.name}
+              onError={(e) => handleImageError(e, recipe)}
             />
             {recipe.tags && recipe.tags.length > 0 && (
               <div className="recipe-tags-overlay">

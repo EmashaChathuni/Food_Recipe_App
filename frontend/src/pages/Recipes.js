@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import RecipeCard from '../Components/RecipeCard';
 import RecipeCardSkeleton from '../Components/RecipeCardSkeleton';
 import sampleRecipes from '../data/SampleRecipes';
+import { RECIPE_CATEGORIES, getSubcategories } from '../data/categories';
 import { searchRecipesWithAI } from '../services/geminiService';
 import './Recipes.css';
 
@@ -13,8 +14,9 @@ const Recipes = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('All');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [selectedOccasion, setSelectedOccasion] = useState('');
   const [difficulty, setDifficulty] = useState('All');
   const [favorites, setFavorites] = useState(() => {
     try {
@@ -27,27 +29,34 @@ const Recipes = () => {
   const [aiRecipes, setAiRecipes] = useState([]);
   const [isAISearch, setIsAISearch] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [trendingRecipes, setTrendingRecipes] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewMode, setViewMode] = useState('grid'); // 'categories' or 'grid'
+
+  const mainCategories = Object.keys(RECIPE_CATEGORIES);
+  const subcategories = selectedCategory !== 'All' ? getSubcategories(selectedCategory).map(sub => sub.name) : [];
 
   // Initialize search and filters from URL parameters
   useEffect(() => {
     const searchParam = searchParams.get('search');
     const categoryParam = searchParams.get('category');
+    const occasionParam = searchParams.get('occasion');
     
     if (searchParam) {
       setQuery(searchParam);
-      // Trigger AI search when search parameter is present
       handleAISearch(searchParam);
     } else {
-      // Clear AI results when no search
       setAiRecipes([]);
       setIsAISearch(false);
     }
     if (categoryParam) {
-      setCategory(categoryParam);
+      setSelectedCategory(categoryParam);
+      setViewMode('grid');
+    }
+    if (occasionParam) {
+      setSelectedOccasion(occasionParam);
+      setViewMode('grid');
     }
   }, [searchParams]);
 
@@ -57,9 +66,8 @@ const Recipes = () => {
       setLoading(true);
       try {
         const base = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000/api';
-        const [recipesRes, trendingRes, tagsRes] = await Promise.all([
+        const [recipesRes, tagsRes] = await Promise.all([
           axios.get(`${base}/recipes`),
-          axios.get(`${base}/recipes/trending/top?limit=3`).catch(() => ({ data: [] })),
           axios.get(`${base}/tags`).catch(() => ({ data: [] }))
         ]);
         
@@ -75,7 +83,6 @@ const Recipes = () => {
         })();
         const merged = [...demo, ...apiRecipes];
         setRecipes(merged.length ? merged : sampleRecipes);
-        setTrendingRecipes(trendingRes.data || []);
         setAllTags(tagsRes.data || []);
         setError(null);
       } catch (err) {
@@ -114,23 +121,13 @@ const Recipes = () => {
     };
   }, [isAuthenticated]);
 
-  const categories = useMemo(() => {
-    const unique = new Set(['All']);
-    recipes.forEach((r) => {
-      if (r.category) unique.add(r.category);
-    });
-    return Array.from(unique);
-  }, [recipes]);
-
-  const difficulties = ['All', 'Easy', 'Intermediate', 'Advanced'];
+  const difficulties = ['All', 'Easy', 'Medium', 'Hard'];
 
   const filtered = useMemo(() => {
-    // If AI search is active and we have AI results, use those
     if (isAISearch && aiRecipes.length > 0) {
       return aiRecipes;
     }
     
-    // Otherwise, filter regular recipes
     return recipes.filter((recipe) => {
       const title = (recipe.title || recipe.name || '').toLowerCase();
       const description = (recipe.description || '').toLowerCase();
@@ -143,13 +140,14 @@ const Recipes = () => {
         ingredients.includes(searchText)
       ) : true;
       
-      const matchesCategory = category === 'All' ? true : recipe.category === category;
+      const matchesCategory = selectedCategory === 'All' ? true : recipe.category === selectedCategory;
+      const matchesSubcategory = selectedSubcategory ? recipe.subcategory === selectedSubcategory : true;
       const matchesDifficulty = difficulty === 'All' ? true : recipe.difficulty === difficulty;
-      const matchesTag = selectedTag ? (recipe.tags || []).includes(selectedTag) : true;
+      const matchesOccasion = selectedOccasion ? (recipe.occasions || []).includes(selectedOccasion) : true;
       
-      return matchesQuery && matchesCategory && matchesDifficulty && matchesTag;
+      return matchesQuery && matchesCategory && matchesSubcategory && matchesDifficulty && matchesOccasion;
     });
-  }, [query, category, difficulty, selectedTag, recipes, isAISearch, aiRecipes]);
+  }, [query, selectedCategory, selectedSubcategory, difficulty, selectedOccasion, recipes, isAISearch, aiRecipes]);
 
   const handleRandomRecipe = async () => {
     try {
@@ -192,7 +190,6 @@ const Recipes = () => {
     });
   };
 
-  // AI Search Handler
   const handleAISearch = async (searchQuery) => {
     if (!searchQuery || searchQuery.trim() === '') {
       setIsAISearch(false);
@@ -207,8 +204,6 @@ const Recipes = () => {
       const results = await searchRecipesWithAI(searchQuery);
       
       if (results.length === 0) {
-        // Fallback to regular search when AI returns no results
-        console.log('AI returned no results, falling back to database search');
         setIsAISearch(false);
         setAiRecipes([]);
         setError(null);
@@ -218,7 +213,6 @@ const Recipes = () => {
       }
     } catch (err) {
       console.error('AI search failed:', err);
-      // Fallback to regular search on error
       setIsAISearch(false);
       setAiRecipes([]);
       setError(null);
@@ -229,30 +223,34 @@ const Recipes = () => {
 
   return (
     <div className="recipes-page">
+      {/* Hero Section */}
       <section className="recipes-hero">
         <div className="container hero-layout">
           <div className="hero-copy">
             <span className="badge">Cook local, cook with heart</span>
-            <h1 className="playfair">Sri Lankan recipe shelf</h1>
+            <h1 className="playfair">Explore & Cook</h1>
             <p>
-              Search for a favourite dish or browse by mood. Each recipe explains the ingredients, spice level, and easy steps so anyone in your home can cook along.
+              Browse by category or search for your favorite dish. Each recipe comes with ingredients, cooking time, difficulty level, and step-by-step instructions.
             </p>
             <div className="hero-search">
               <input
                 type="search"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Try 'kottu', 'parippu', or 'hoppers'"
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  if (event.target.value) handleAISearch(event.target.value);
+                }}
+                placeholder="Search recipes, ingredients..."
               />
               <button className="random-btn" onClick={handleRandomRecipe} title="Surprise me">
-                Random
+                🎲 Random
               </button>
             </div>
           </div>
           <div className="hero-image">
             <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/0/07/Lunumiris_with_Appam.JPG" 
-              alt="Sri Lankan curry spread"
+              src="https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=500&h=400&fit=crop" 
+              alt="Sri Lankan cuisine"
               onError={(e) => {
                 e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg';
               }}
@@ -261,62 +259,98 @@ const Recipes = () => {
         </div>
       </section>
 
-      {trendingRecipes.length > 0 && (
-        <section className="trending-section">
-          <div className="container">
-            <h2>Trending Recipes</h2>
-            <div className="trending-grid">
-              {trendingRecipes.map((recipe) => (
-                <RecipeCard
-                  key={recipe._id || recipe.id}
-                  recipe={recipe}
-                  onToggleFavorite={toggleFavorite}
-                  isFavorite={favorites.includes(recipe._id || recipe.id)}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       <div className="container">
-        {query && (
-          <div className="search-result-header">
-            <h2>
-              {isAISearch && aiRecipes.length > 0 && '🤖 AI-Powered '} Search Results for "{query}"
-            </h2>
-            <p>
-              {aiLoading ? (
-                '🔍 Searching with AI...'
-              ) : (
-                <>
-                  Found {filtered.length} delicious recipe{filtered.length !== 1 ? 's' : ''}
-                  {isAISearch && aiRecipes.length > 0 && ' generated by Gemini AI'}
-                </>
-              )}
-            </p>
-          </div>
-        )}
-        
-        <div className="filters-section">
-          <div className="filter-group">
-            <label>Category</label>
-            <div className="filter-chips">
-              {categories.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={`filter-chip ${item === category ? 'is-active' : ''}`}
-                  onClick={() => setCategory(item)}
-                >
-                  {item}
-                </button>
-              ))}
+        {/* Category Browse Section */}
+        {!query && (
+          <section className="categories-browse">
+            <h2>Browse by Category</h2>
+            <div className="categories-showcase">
+              {mainCategories.map((cat) => {
+                const categoryData = RECIPE_CATEGORIES[cat];
+                const isSelected = selectedCategory === cat;
+                return (
+                  <div
+                    key={cat}
+                    className={`category-showcase-card ${isSelected ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedCategory(isSelected ? 'All' : cat);
+                      setSelectedSubcategory('');
+                      setViewMode('grid');
+                    }}
+                    style={{ '--category-color': categoryData.color }}
+                  >
+                    <div className="showcase-image">
+                      <img
+                        src={categoryData.image}
+                        alt={cat}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/300x200?text=' + cat;
+                        }}
+                      />
+                    </div>
+                    <div className="showcase-content">
+                      <span className="showcase-icon">{categoryData.icon}</span>
+                      <h3>{cat}</h3>
+                      <p className="showcase-description">{categoryData.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </section>
+        )}
 
+        {/* Subcategories Section */}
+        {selectedCategory !== 'All' && subcategories.length > 0 && (
+          <section className="subcategories-browse">
+            <div className="subcategories-header">
+              <button 
+                className="back-to-categories"
+                onClick={() => {
+                  setSelectedCategory('All');
+                  setSelectedSubcategory('');
+                }}
+              >
+                ← Back to Categories
+              </button>
+              <h2>
+                {RECIPE_CATEGORIES[selectedCategory].icon} {selectedCategory} - Choose a subcategory
+              </h2>
+            </div>
+            <div className="subcategories-grid">
+              {subcategories.map((sub) => {
+                const subData = getSubcategories(selectedCategory).find(s => s.name === sub);
+                const isSelected = selectedSubcategory === sub;
+                return (
+                  <div
+                    key={sub}
+                    className={`subcategory-card ${isSelected ? 'active' : ''}`}
+                    onClick={() => setSelectedSubcategory(isSelected ? '' : sub)}
+                  >
+                    <div className="subcategory-image">
+                      <img
+                        src={subData?.image}
+                        alt={sub}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/250x200?text=' + sub;
+                        }}
+                      />
+                    </div>
+                    <div className="subcategory-info">
+                      <h4>{sub}</h4>
+                      <p>{subData?.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Filters Section */}
+        <section className="filters-section">
           <div className="filter-group">
-            <label>Difficulty</label>
+            <label>Difficulty Level</label>
             <div className="filter-chips">
               {difficulties.map((item) => (
                 <button
@@ -331,72 +365,52 @@ const Recipes = () => {
             </div>
           </div>
 
-          {allTags.length > 0 && (
-            <div className="filter-group">
-              <label>Tags</label>
-              <div className="filter-chips">
-                <button
-                  type="button"
-                  className={`filter-chip ${!selectedTag ? 'is-active' : ''}`}
-                  onClick={() => setSelectedTag('')}
-                >
-                  All
-                </button>
-                {allTags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    className={`filter-chip ${tag === selectedTag ? 'is-active' : ''}`}
-                    onClick={() => setSelectedTag(tag)}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
+          <div className="filter-meta">
+            <span className="recipe-count">
+              {filtered.length} recipe{filtered.length !== 1 ? 's' : ''} found
+            </span>
+            {error && <span className="filter-notice">⚠️ {error}</span>}
+          </div>
+        </section>
+
+        {/* Recipes Grid */}
+        <section className="recipes-results">
+          {loading || aiLoading ? (
+            <div className="recipe-grid">
+              {[...Array(6)].map((_, i) => (
+                <RecipeCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : filtered.length > 0 ? (
+            <div className="recipe-grid">
+              {filtered.map((recipe) => (
+                <RecipeCard
+                  key={recipe._id || recipe.id}
+                  recipe={recipe}
+                  onToggleFavorite={toggleFavorite}
+                  isFavorite={favorites.includes(recipe._id || recipe.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h3>🔍 No recipes found</h3>
+              <p>Try adjusting your filters or search for something different.</p>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={() => {
+                  setQuery('');
+                  setSelectedCategory('All');
+                  setSelectedSubcategory('');
+                  setDifficulty('All');
+                }}
+              >
+                Reset Filters
+              </button>
             </div>
           )}
-
-          <div className="filter-meta">
-            <span>{filtered.length} recipes found</span>
-            {error && <span className="filter-notice">{error}</span>}
-          </div>
-        </div>
-
-        {loading || aiLoading ? (
-          <div className="recipe-grid">
-            {[...Array(6)].map((_, i) => (
-              <RecipeCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : (
-          <div className="recipe-results">
-            {filtered.length ? (
-              <div className="recipe-grid">
-                {filtered.map((recipe) => (
-                  <RecipeCard
-                    key={recipe._id || recipe.id}
-                    recipe={recipe}
-                    onToggleFavorite={toggleFavorite}
-                    isFavorite={favorites.includes(recipe._id || recipe.id)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <h3>No dishes found.</h3>
-                <p>Try another word or explore a different category to spot more Sri Lankan favourites.</p>
-                <button type="button" className="btn-reset" onClick={() => {
-                  setCategory('All');
-                  setDifficulty('All');
-                  setSelectedTag('');
-                  setQuery('');
-                }}>
-                  Reset all filters
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        </section>
       </div>
     </div>
   );

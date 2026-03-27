@@ -1,21 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import StarRating from './StarRating';
+import { getImageUrl, handleImageError } from '../utils/imageUtils';
 import './RecipeCard.css';
 
 const RecipeCard = ({ recipe, onToggleFavorite, isFavorite }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
   const id = recipe._id || recipe.id;
-  const image = recipe.image || 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Sri_Lankan_Rice_and_Curry.jpg';
+  const image = getImageUrl(recipe);
   const category = recipe.category || 'Seasonal';
   const prep = recipe.prepTime || '30 mins';
   const difficulty = recipe.difficulty || 'Intermediate';
+  const isUserAdded = recipe.addedByUser;
 
   return (
     <article className="recipe-card-tile">
       <Link to={`/recipes/${id}`} className="recipe-card-link" aria-label={`Open ${recipe.title || recipe.name}`}>
         <div className="recipe-card-media">
-          <img src={image} alt={recipe.title || recipe.name} />
+          <img 
+            src={image} 
+            alt={recipe.title || recipe.name}
+            onError={(e) => handleImageError(e, recipe)}
+            onLoad={() => setImageLoaded(true)}
+            className={imageLoaded ? 'loaded' : 'loading'}
+          />
           <span className="recipe-card-category">{category}</span>
+          {isUserAdded && <span className="recipe-card-badge">👥 Added by valued users</span>}
         </div>
       </Link>
       <div className="recipe-card-body">
